@@ -7,7 +7,7 @@
 # Website: https://blablalinux.be
 # Wiki: https://wiki.blablalinux.be/fr/script-gestion-watchtower
 # License: GPL-3.0
-# Version: 1.1.0
+# Version: 1.2.0
 # ==============================================================================
 
 MENU="
@@ -25,8 +25,9 @@ MENU="
  [9] 📅 Modifier le schedule aléatoire (14h-20h)
  [10] 📅 Fixer le même schedule pour tous
  [11] ✏️  Modifier WATCHTOWER_TIMEOUT
- [12] 🖼️  Modifier l'image Docker
- [13] 🧹 Nettoyer toutes les images (prune -a)
+ [12] ✏️  Modifier WATCHTOWER_NOTIFICATION_GOTIFY_URL
+ [13] 🖼️  Modifier l'image Docker
+ [14] 🧹 Nettoyer toutes les images (prune -a)
  [Q] ❌ Quitter
 "
 
@@ -34,7 +35,10 @@ run_action_on_all() {
     local action_func=$1
     for lxc_id in $(pct list | awk 'NR>1{print $1}'); do
         tags=$(pct config "$lxc_id" | grep "^tags:" | awk '{print $2}')
-        if [[ "$tags" =~ "watchtower" ]]; then
+        
+        # --- CORRECTION FILTRAGE PAR MOT ENTIER ---
+        # On ne traite QUE si le tag exact "watchtower" est présent, évite d'inclure "watchtower-custom"
+        if [[ " $tags " =~ " watchtower " ]]; then
             initial_status=$(pct status "$lxc_id" | awk '{print $2}')
             hostname=$(pct config "$lxc_id" | grep "^hostname:" | awk '{print $2}')
             echo "--- Traitement LXC $lxc_id ($hostname) ---"
@@ -94,7 +98,7 @@ _restart() {
 }
 _view() {
     compose_file=$(find_watchtower_compose "$1")
-    [ -n "$compose_file" ] && pct exec "$1" -- sh -c "grep -E 'image:|restart:|WATCHTOWER_NO_STARTUP_MESSAGE|WATCHTOWER_CLEANUP|WATCHTOWER_SCHEDULE|WATCHTOWER_TIMEOUT' $compose_file"
+    [ -n "$compose_file" ] && pct exec "$1" -- sh -c "grep -E 'image:|restart:|WATCHTOWER_NO_STARTUP_MESSAGE|WATCHTOWER_CLEANUP|WATCHTOWER_SCHEDULE|WATCHTOWER_TIMEOUT|WATCHTOWER_NOTIFICATION_GOTIFY_URL' $compose_file"
 }
 _modify_key() {
     compose_file=$(find_watchtower_compose "$1")
@@ -148,8 +152,9 @@ while true; do
         9) run_action_on_all _random_sched ;;
         10) GLOBAL_KEY="WATCHTOWER_SCHEDULE" ; read -rp "Cron : " GLOBAL_VAL ; run_action_on_all _modify_key ;;
         11) GLOBAL_KEY="WATCHTOWER_TIMEOUT" ; read -rp "Valeur : " GLOBAL_VAL ; run_action_on_all _modify_key ;;
-        12) read -rp "Image : " GLOBAL_VAL ; run_action_on_all _set_image ;;
-        13) read -rp "Confirmer prune (oui/non) : " conf ; [[ "$conf" =~ ^[Oo][Uu][Ii]$ ]] && run_action_on_all _prune ;;
+        12) GLOBAL_KEY="WATCHTOWER_NOTIFICATION_GOTIFY_URL" ; read -rp "Nouvelle URL Gotify : " GLOBAL_VAL ; run_action_on_all _modify_key ;;
+        13) read -rp "Image : " GLOBAL_VAL ; run_action_on_all _set_image ;;
+        14) read -rp "Confirmer prune (oui/non) : " conf ; [[ "$conf" =~ ^[Oo][Uu][Ii]$ ]] && run_action_on_all _prune ;;
         [Qq]) exit ;;
     esac
 done

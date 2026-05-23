@@ -6,12 +6,12 @@
 # Website: https://blablalinux.be
 # Wiki: https://wiki.blablalinux.be/fr/script-gestion-watchtower
 # License: GPL-3.0
-# Version: 1.0.0
+# Version: 1.1.0
 # ==============================================================================
 
 MENU="
 ===============================================
-   Gestion de Watchtower dans les conteneurs LXC
+    Gestion de Watchtower dans les conteneurs LXC
 ===============================================
  [1] 🔍 Voir l’état actuel de Watchtower
  [2] 🚀 Démarrer Watchtower
@@ -24,8 +24,9 @@ MENU="
  [9] 📅 Modifier le schedule aléatoire (14h-20h)
  [10] 📅 Fixer le même schedule pour tous
  [11] ✏️  Modifier WATCHTOWER_TIMEOUT
- [12] 🖼️  Modifier l'image Docker
- [13] 🧹 Nettoyer toutes les images (prune -a)
+ [12] ✏️  Modifier WATCHTOWER_NOTIFICATION_GOTIFY_URL
+ [13] 🖼️  Modifier l'image Docker
+ [14] 🧹 Nettoyer toutes les images (prune -a)
  [Q] ❌ Quitter
 "
 
@@ -85,7 +86,7 @@ view_compose() {
     for lxc_id in $(get_running_docker_lxc); do
         compose_file=$(find_watchtower_compose "$lxc_id")
         echo "→ LXC $lxc_id"
-        [ -n "$compose_file" ] && pct exec "$lxc_id" -- sh -c "grep -E 'image:|restart:|WATCHTOWER_NO_STARTUP_MESSAGE|WATCHTOWER_CLEANUP|WATCHTOWER_SCHEDULE|WATCHTOWER_TIMEOUT' $compose_file"
+        [ -n "$compose_file" ] && pct exec "$lxc_id" -- sh -c "grep -E 'image:|restart:|WATCHTOWER_NO_STARTUP_MESSAGE|WATCHTOWER_CLEANUP|WATCHTOWER_SCHEDULE|WATCHTOWER_TIMEOUT|WATCHTOWER_NOTIFICATION_GOTIFY_URL' $compose_file"
     done
     read -rp "Appuyez sur [Entrée]..."
 }
@@ -148,7 +149,7 @@ prune_docker_images() {
     read -rp "Confirmer prune -a sur TOUS les LXC actifs? (oui/non): " conf
     if [[ "$conf" =~ ^[Oo][Uu][Ii]$ ]]; then
         for lxc_id in $(get_running_docker_lxc); do
-            pct exec "$lxc_id" -- docker image prune -a -f
+            pct exec "$lxc_id" -- docker delete image prune -a -f
         done
     fi
 }
@@ -167,8 +168,9 @@ while true; do
         9) random_schedule ;;
         10) read -rp "Cron : " v; modify_key_restart "WATCHTOWER_SCHEDULE" "$v" ;;
         11) read -rp "Timeout : " v; modify_key_restart "WATCHTOWER_TIMEOUT" "$v" ;;
-        12) set_watchtower_image ;;
-        13) prune_docker_images ;;
+        12) read -rp "Nouvelle URL Gotify : " v; modify_key_restart "WATCHTOWER_NOTIFICATION_GOTIFY_URL" "$v" ;;
+        13) set_watchtower_image ;;
+        14) prune_docker_images ;;
         [Qq]) exit ;;
     esac
 done
